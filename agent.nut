@@ -1,9 +1,9 @@
-local html = @"<!doctype html>
+const html = @"<!doctype html>
  
 <html lang=""en"">
 <head>
   <meta charset=""utf-8"" />
-  <title>jQuery UI Slider - Colorpicker</title>
+  <title>Electric Imp NeoPixel Colorpicker</title>
   <link rel=""stylesheet"" href=""https://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"" />
   <script src=""https://code.jquery.com/jquery-1.9.1.js""></script>
   <script src=""https://code.jquery.com/ui/1.10.3/jquery-ui.js""></script>
@@ -28,7 +28,17 @@ local html = @"<!doctype html>
   #blue .ui-slider-range { background: #729fcf; }
   #blue .ui-slider-handle { border-color: #729fcf; }
   </style>
-  <script type = ""text/javascript"">
+  <script>
+    function sendToImp(value){
+        if (window.XMLHttpRequest) {devInfoReq=new XMLHttpRequest();}
+        else {devInfoReq=new ActiveXObject(""Microsoft.XMLHTTP"");}
+        try {
+            devInfoReq.open('POST', document.URL, false);
+            devInfoReq.send(value);
+        } catch (err) {
+            console.log('Error parsing device info from imp');
+        }
+    }
   function hexFromRGB(r, g, b) {
     var hex = [
       r.toString( 16 ),
@@ -37,56 +47,62 @@ local html = @"<!doctype html>
     ];
     $.each( hex, function( nr, val ) {
       if ( val.length === 1 ) {
-        hex[ nr ] = '0' + val;
+        hex[ nr ] = ""0"" + val;
       }
     });
-    return hex.join( '' ).toUpperCase();
+    return hex.join( """" ).toUpperCase();
   }
   function refreshSwatch() {
-    var red = $( '#red' ).slider( 'value' ),
-      green = $( '#green' ).slider( 'value' ),
-      blue = $( '#blue' ).slider( 'value' ),
+    var red = $( ""#red"" ).slider( ""value"" ),
+      green = $( ""#green"" ).slider( ""value"" ),
+      blue = $( ""#blue"" ).slider( ""value"" ),
       hex = hexFromRGB( red, green, blue );
-    $( '#swatch' ).css( 'background-color', '#' + hex );
+    $( ""#swatch"" ).css( ""background-color"", ""#"" + hex );
+    sendToImp('{""red"":""' + red +'"",""blue"":""' + blue + '"",""green"":""' + green + '""}');
   }
   $(function() {
-    $( '#red, #green, #blue' ).slider({
-      orientation: 'horizontal',
-      range: 'min',
+    $( ""#red, #green, #blue"" ).slider({
+      orientation: ""horizontal"",
+      range: ""min"",
       max: 255,
       value: 127,
-      slide: refreshSwatch,
-      change: refreshSwatch
+      
+      stop: refreshSwatch
     });
-    $( '#red' ).slider( 'value', 255 );
-    $( '#green' ).slider( 'value', 140 );
-    $( '#blue' ).slider( 'value', 60 );
+    $( ""#red"" ).slider( ""value"", 255 );
+    $( ""#green"" ).slider( ""value"", 255 );
+    $( ""#blue"" ).slider( ""value"", 255 );
   });
   </script>
 </head>
-<body class='ui-widget-content' style='border: 0;'>
-<p class='ui-state-default ui-corner-all ui-helper-clearfix' style='padding: 4px;'>
-  <span class='ui-icon ui-icon-pencil' style='float: left; margin: -2px 5px 0 0;'></span>
-  Simple Colorpicker
+<body class=""ui-widget-content"" style=""border: 0;"">
+ 
+<p class=""ui-state-default ui-corner-all ui-helper-clearfix"" style=""padding: 4px;"">
+  <span class=""ui-icon ui-icon-pencil"" style=""float: left; margin: -2px 5px 0 0;""></span>
+  Electric Imp Colorpicker
 </p>
  
-<div id='red'></div>
-<div id='green'></div>
-<div id='blue'></div>
+<div id=""red""></div>
+<div id=""green""></div>
+<div id=""blue""></div>
  
-<div id='swatch' class='ui-widget-content ui-corner-all'></div>
+<div id=""swatch"" class=""ui-widget-content ui-corner-all""></div>
  
  
 </body>
 </html>";
 
-http.onrequest(function (req, resp) {
-  try {
-    if (req.body == "") {
-        resp.send(200, html);
+http.onrequest(function(request,res){
+    if (request.body == "") {
+        res.send(200, html);
+    }else{
+        local json = http.jsondecode(request.body);
+        if("red" in json && "green" in json && "blue" in json){
+            server.log("RGB: " + request.body);
+            device.send("rgb", json);
+        }else {
+            server.log("Unrecognized Body: "+request.body);
+        }
+        res.send(200, "");
     }
-  }
-  catch (ex) {
-    response.send(500, "Internal Server Error: " + ex);
-  }
-});    
+});
